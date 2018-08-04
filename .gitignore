@@ -3,3 +3,7 @@
 ################################################################################
 
 /Alexa.Azure.HomeAutomation/Alexa.Skill/bin/Debug/netcoreapp2.0
+/Alexa.Azure.HomeAutomation/Alexa.Skill/obj/Debug/netcoreapp2.0
+*.suo
+/Alexa.Azure.HomeAutomation/Alexa.Skill/obj
+/Alexa.Azure.HomeAutomation/.vs/config
