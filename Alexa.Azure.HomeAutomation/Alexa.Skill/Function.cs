@@ -66,6 +66,12 @@ namespace Alexa.Skill.HomeAutomation
                 string SLOT_DEVICE_NAME = intentRequest.Intent.Slots["DEVICE_NAME"].Value;
                 string SLOT_DEVICE_STATE = intentRequest.Intent.Slots["DEVICE_STATE"].Value;
 
+                log.LogLine($"-------------------------------------------------------------");
+                log.LogLine($"INTENT RESOLVER received Intent - " + intentRequest.Intent.Name);
+                log.LogLine($"SLOT RESOLVER received Slots - " + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                log.LogLine($"-------------------------------------------------------------");
+                SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
+
                 switch (intentRequest.Intent.Name)
                 {
                     case "AMAZON.CancelIntent":
@@ -86,12 +92,12 @@ namespace Alexa.Skill.HomeAutomation
                         (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
                         break;
                     case "OperateDevice":
-                        log.LogLine($"GetFactIntent sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                        log.LogLine($"OperateDevice sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
                         (innerResponse as PlainTextOutputSpeech).Text = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
                         break;
                     case "GetStatus":
-                        log.LogLine($"GetFactIntent sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                        log.LogLine($"GetStatus sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
                         (innerResponse as PlainTextOutputSpeech).Text = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
                         break;
@@ -172,7 +178,7 @@ namespace Alexa.Skill.HomeAutomation
             {
                 ExtServiceHelper service = new ExtServiceHelper();
                 string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
-                string method = "GetUpdatedDeviceState?DeviceName=" + DeviceName + "&RoomName=" + ReplaceAllSpaces(RoomName) + "&NewState=" + NewState;
+                string method = "GetUpdatedDeviceState?DeviceName=" + DeviceName + "&RoomName=" + ReplaceAllSpaces(RoomName) + "&NewState=" + (NewState.Equals("ON", StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
                 try
                 {
                     loggerGlobal.LogLine("Invoking room controller operation: " + baseUri + method);
