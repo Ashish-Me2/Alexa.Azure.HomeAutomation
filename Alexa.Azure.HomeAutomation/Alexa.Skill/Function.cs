@@ -8,14 +8,17 @@ using Alexa.NET.Response;
 using Alexa.NET.Request;
 using Alexa.NET.Request.Type;
 using Newtonsoft.Json;
+using System.Web;
+using System.Text.RegularExpressions;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializerAttribute(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
 
 namespace Alexa.Skill.HomeAutomation
 {
-    public class LunchMenuHandler
+    public class SwitchboardHandler
     {
+        private ILambdaLogger loggerGlobal;
         public List<FactResource> GetResources()
         {
             List<FactResource> resources = new List<FactResource>();
@@ -35,13 +38,14 @@ namespace Alexa.Skill.HomeAutomation
         /// <param name="input"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public SkillResponse MenuHandler(SkillRequest input, ILambdaContext context)
+        public SkillResponse SwitchHandler(SkillRequest input, ILambdaContext context)
         {
             SkillResponse response = new SkillResponse();
             response.Response = new ResponseBody();
             response.Response.ShouldEndSession = false;
             IOutputSpeech innerResponse = null;
             var log = context.Logger;
+            loggerGlobal = log;
             log.LogLine($"Skill Request Object:");
             log.LogLine(JsonConvert.SerializeObject(input));
 
@@ -58,6 +62,10 @@ namespace Alexa.Skill.HomeAutomation
             else if (input.GetRequestType() == typeof(IntentRequest))
             {
                 var intentRequest = (IntentRequest)input.Request;
+                string SLOT_ROOM_NAME = intentRequest.Intent.Slots["ROOM_NAME"].Value;
+                string SLOT_DEVICE_NAME = intentRequest.Intent.Slots["DEVICE_NAME"].Value;
+                string SLOT_DEVICE_STATE = intentRequest.Intent.Slots["DEVICE_STATE"].Value;
+
                 switch (intentRequest.Intent.Name)
                 {
                     case "AMAZON.CancelIntent":
@@ -78,19 +86,20 @@ namespace Alexa.Skill.HomeAutomation
                         (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
                         break;
                     case "OperateDevice":
-                        log.LogLine($"GetFactIntent sent: Operate Switchboard with slot value:" + (intentRequest.Intent.Slots["weekday"].Value));
+                        log.LogLine($"GetFactIntent sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = GetMenuItems(intentRequest.Intent.Slots["weekday"].Value).Result;
+                        (innerResponse as PlainTextOutputSpeech).Text = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
                         break;
                     case "GetStatus":
-                        log.LogLine($"GetFactIntent sent: Get Switchboard Status with slot value:" + (intentRequest.Intent.Slots["weekday"].Value));
+                        log.LogLine($"GetFactIntent sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = GetMenuItems(intentRequest.Intent.Slots["weekday"].Value).Result;
+                        (innerResponse as PlainTextOutputSpeech).Text = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
                         break;
                     default:
                         log.LogLine($"Unknown intent: " + intentRequest.Intent.Name);
                         innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = emitNewFact(resource, false);
+                        (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
+                        response.Response.ShouldEndSession = true;
                         break;
                 }
             }
@@ -102,12 +111,83 @@ namespace Alexa.Skill.HomeAutomation
             return response;
         }
 
-        public async Task<string> GetMenuItems(string weekDay)
+        private async Task<int> IsRoomControllerAlive(string RoomName)
         {
             ExtServiceHelper service = new ExtServiceHelper();
-            string menu = "The menu for " + weekDay + " is " + await service.GetDataFromService("https://ocrserviceapi.azurewebsites.net/", "api/ocr?Weekday=", new List<object> { weekDay });
-            return menu;
+            string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+            string method = "GetIsControllerAlive?RoomName=" + ReplaceAllSpaces(RoomName);
+            string retVal = String.Empty;
+            int result = -1;
+            try
+            {
+                string roomStatus = service.GetDataFromService(baseUri, method, new List<object> { null }).Result;
+                loggerGlobal.LogLine("Checking controller heartbeat: " + baseUri + method);
+                loggerGlobal.LogLine("Heartbeat status: " + roomStatus);
+                int.TryParse(roomStatus, out result);
+            }
+            catch (Exception exp)
+            {
+                retVal = "An error occurred while executing that operation.";
+            }
+            loggerGlobal.LogLine("Final Heartbeat status: " + result);
+            return result;
         }
+
+
+        public async Task<string> GetStatus(string DeviceName, string RoomName)
+        {
+            string retVal = String.Empty;
+            
+            if (IsRoomControllerAlive(RoomName).Result < 1)
+            {
+                retVal = "The controller for " + RoomName + " is not responding at the moment. Please check the controller.";
+            }
+            else {
+                ExtServiceHelper service = new ExtServiceHelper();
+                string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+                string method = "GetRoomDeviceStatus?RoomName=" + ReplaceAllSpaces(RoomName);
+
+                try
+                {
+                    string roomStatus = service.GetDataFromService(baseUri, method, new List<object> { null }).Result;
+                    retVal = roomStatus.Replace("=", " is ");
+                }
+                catch (Exception exp)
+                {
+                    retVal = "An error occurred while executing that operation.";
+                }
+            }
+            return retVal;
+        }
+
+        public async Task<string> OperateDevice(string DeviceName, string RoomName, string NewState)
+        {
+            string retVal = String.Empty;
+            
+            if (IsRoomControllerAlive(RoomName).Result < 1)
+            {
+                retVal = "The controller for " + RoomName + " is not responding at the moment. Please check the controller.";
+            }
+            else
+            {
+                ExtServiceHelper service = new ExtServiceHelper();
+                string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+                string method = "GetUpdatedDeviceState?DeviceName=" + DeviceName + "&RoomName=" + ReplaceAllSpaces(RoomName) + "&NewState=" + NewState;
+                try
+                {
+                    loggerGlobal.LogLine("Invoking room controller operation: " + baseUri + method);
+                    string roomStatus = service.GetDataFromService(baseUri, method, new List<object> { null }).Result;
+                    loggerGlobal.LogLine("Controller operation response: " + roomStatus);
+                    retVal = "Done";
+                }
+                catch (Exception exp)
+                {
+                    retVal = "An error occurred while executing that operation.";
+                }
+            }
+            return retVal;
+        }
+
 
         public string emitNewFact(FactResource resource, bool withPreface)
         {
@@ -115,6 +195,11 @@ namespace Alexa.Skill.HomeAutomation
             if (withPreface)
                 return resource.GetFactMessage + resource.Facts[r.Next(resource.Facts.Count)];
             return resource.Facts[r.Next(resource.Facts.Count)];
+        }
+
+        public static string ReplaceAllSpaces(string str)
+        {
+            return Regex.Replace(str, @"\s+", "%20");
         }
     }
 }

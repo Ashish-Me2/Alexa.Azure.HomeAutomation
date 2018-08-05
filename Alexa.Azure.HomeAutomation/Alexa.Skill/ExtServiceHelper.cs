@@ -18,7 +18,8 @@ namespace Alexa.Skill.HomeAutomation
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri(ServiceURI);
-                    retVal = await client.GetStringAsync(ServiceURI + MethodName + Parameters[0].ToString());
+                    string parameter = (Parameters[0] != null) ? Parameters[0].ToString() : String.Empty;
+                    retVal = await client.GetStringAsync(ServiceURI + MethodName + parameter);
                 }
             }
             catch (Exception exp)

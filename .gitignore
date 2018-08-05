@@ -7,3 +7,5 @@
 *.suo
 /Alexa.Azure.HomeAutomation/Alexa.Skill/obj
 /Alexa.Azure.HomeAutomation/.vs/config
+/Alexa.Azure.HomeAutomation/Alexa.Skill/bin/Release/netcoreapp2.0
+/Alexa.Azure.HomeAutomation/.vs/Alexa.Azure.HomeAutomation
