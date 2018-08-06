@@ -72,6 +72,7 @@ namespace Alexa.Skill.HomeAutomation
                 log.LogLine($"-------------------------------------------------------------");
                 SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
 
+                string responseText = String.Empty;
                 switch (intentRequest.Intent.Name)
                 {
                     case "AMAZON.CancelIntent":
@@ -94,12 +95,24 @@ namespace Alexa.Skill.HomeAutomation
                     case "OperateDevice":
                         log.LogLine($"OperateDevice sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
+                        responseText = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
+                        if (responseText.Contains("responding"))
+                        {
+                            log.LogLine($"Setting EndSession to TRUE as there is an error with the controller. No further operations are possible.");
+                            response.Response.ShouldEndSession = true;
+                        }
+                        (innerResponse as PlainTextOutputSpeech).Text = responseText;
                         break;
                     case "GetStatus":
                         log.LogLine($"GetStatus sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
+                        responseText = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
+                        if (responseText.Contains("responding"))
+                        {
+                            log.LogLine($"Setting EndSession to TRUE as there is an error with the controller. No further operations are possible.");
+                            response.Response.ShouldEndSession = true;
+                        }
+                        (innerResponse as PlainTextOutputSpeech).Text = responseText;
                         break;
                     default:
                         log.LogLine($"Unknown intent: " + intentRequest.Intent.Name);
@@ -143,7 +156,6 @@ namespace Alexa.Skill.HomeAutomation
         public async Task<string> GetStatus(string DeviceName, string RoomName)
         {
             string retVal = String.Empty;
-            
             if (IsRoomControllerAlive(RoomName).Result < 1)
             {
                 retVal = "The controller for " + RoomName + " is not responding at the moment. Please check the controller.";
