@@ -25,10 +25,10 @@ namespace Alexa.Skill.HomeAutomation
             FactResource enINResource = new FactResource("en-IN");
             enINResource.SkillName = "Switchboard";
             enINResource.GetFactMessage = "Here's the status of the room's devices";
-            enINResource.HelpMessage = "You can say ask Switchboard to turn on the bulb in the Living Room, or, you can say exit... What can I help you with?";
+            enINResource.HelpMessage = "You can say ask Controller to turn on the bulb in the Living Room, or, you can say exit... What can I help you with?";
             enINResource.HelpReprompt = String.Empty;
             enINResource.StopMessage = String.Empty;
-            enINResource.Facts.Add("Umm. Please speak your desired operation clearly...");
+            enINResource.Facts.Add("Please speak your desired operation clearly...");
             resources.Add(enINResource);
             return resources;
         }
@@ -54,7 +54,7 @@ namespace Alexa.Skill.HomeAutomation
 
             if (input.GetRequestType() == typeof(LaunchRequest))
             {
-                log.LogLine($"Default LaunchRequest made: 'Alexa, ask Switchboard");
+                log.LogLine($"Default LaunchRequest made: 'Alexa, ask Controller");
                 innerResponse = new PlainTextOutputSpeech();
                 (innerResponse as PlainTextOutputSpeech).Text = emitNewFact(resource, true);
 
@@ -71,6 +71,7 @@ namespace Alexa.Skill.HomeAutomation
                 log.LogLine($"SLOT RESOLVER received Slots - " + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                 log.LogLine($"-------------------------------------------------------------");
                 SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
+                SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LAMP", StringComparison.CurrentCultureIgnoreCase)) ? "Bulb" : SLOT_DEVICE_NAME;
 
                 string responseText = String.Empty;
                 switch (intentRequest.Intent.Name)
@@ -93,26 +94,18 @@ namespace Alexa.Skill.HomeAutomation
                         (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
                         break;
                     case "OperateDevice":
-                        log.LogLine($"OperateDevice sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                        log.LogLine($"OperateDevice sent: Operate Controller with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
                         responseText = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
-                        if (responseText.Contains("responding"))
-                        {
-                            log.LogLine($"Setting EndSession to TRUE as there is an error with the controller. No further operations are possible.");
-                            response.Response.ShouldEndSession = true;
-                        }
                         (innerResponse as PlainTextOutputSpeech).Text = responseText;
+                        response.Response.ShouldEndSession = true;
                         break;
                     case "GetStatus":
-                        log.LogLine($"GetStatus sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                        log.LogLine($"GetStatus sent: Get Controller Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                         innerResponse = new PlainTextOutputSpeech();
                         responseText = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
-                        if (responseText.Contains("responding"))
-                        {
-                            log.LogLine($"Setting EndSession to TRUE as there is an error with the controller. No further operations are possible.");
-                            response.Response.ShouldEndSession = true;
-                        }
                         (innerResponse as PlainTextOutputSpeech).Text = responseText;
+                        response.Response.ShouldEndSession = true;
                         break;
                     default:
                         log.LogLine($"Unknown intent: " + intentRequest.Intent.Name);
