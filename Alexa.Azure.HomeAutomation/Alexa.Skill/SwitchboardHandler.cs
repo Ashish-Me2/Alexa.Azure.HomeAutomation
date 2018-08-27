@@ -70,43 +70,58 @@ namespace Alexa.Skill.HomeAutomation
                 log.LogLine($"INTENT RESOLVER received Intent - " + intentRequest.Intent.Name);
                 log.LogLine($"SLOT RESOLVER received Slots - " + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                 log.LogLine($"-------------------------------------------------------------");
-                SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
 
-                switch (intentRequest.Intent.Name)
+                try
                 {
-                    case "AMAZON.CancelIntent":
-                        log.LogLine($"AMAZON.CancelIntent: send StopMessage");
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = resource.StopMessage;
-                        response.Response.ShouldEndSession = true;
-                        break;
-                    case "AMAZON.StopIntent":
-                        log.LogLine($"AMAZON.StopIntent: send StopMessage");
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = resource.StopMessage;
-                        response.Response.ShouldEndSession = true;
-                        break;
-                    case "AMAZON.HelpIntent":
-                        log.LogLine($"AMAZON.HelpIntent: send HelpMessage");
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
-                        break;
-                    case "OperateDevice":
-                        log.LogLine($"OperateDevice sent: Operate Switchboard with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
-                        break;
-                    case "GetStatus":
-                        log.LogLine($"GetStatus sent: Get Switchboard Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
-                        break;
-                    default:
-                        log.LogLine($"Unknown intent: " + intentRequest.Intent.Name);
-                        innerResponse = new PlainTextOutputSpeech();
-                        (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
-                        response.Response.ShouldEndSession = true;
-                        break;
+                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
+                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LAMP", StringComparison.CurrentCultureIgnoreCase)) ? "Bulb" : SLOT_DEVICE_NAME;
+                    string responseText = String.Empty;
+                    switch (intentRequest.Intent.Name)
+                    {
+                        case "AMAZON.CancelIntent":
+                            log.LogLine($"AMAZON.CancelIntent: send StopMessage");
+                            innerResponse = new PlainTextOutputSpeech();
+                            (innerResponse as PlainTextOutputSpeech).Text = resource.StopMessage;
+                            response.Response.ShouldEndSession = true;
+                            break;
+                        case "AMAZON.StopIntent":
+                            log.LogLine($"AMAZON.StopIntent: send StopMessage");
+                            innerResponse = new PlainTextOutputSpeech();
+                            (innerResponse as PlainTextOutputSpeech).Text = resource.StopMessage;
+                            response.Response.ShouldEndSession = true;
+                            break;
+                        case "AMAZON.HelpIntent":
+                            log.LogLine($"AMAZON.HelpIntent: send HelpMessage");
+                            innerResponse = new PlainTextOutputSpeech();
+                            (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
+                            break;
+                        case "OperateDevice":
+                            log.LogLine($"OperateDevice sent: Operate Controller with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                            innerResponse = new PlainTextOutputSpeech();
+                            responseText = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
+                            (innerResponse as PlainTextOutputSpeech).Text = responseText;
+                            response.Response.ShouldEndSession = true;
+                            break;
+                        case "GetStatus":
+                            log.LogLine($"GetStatus sent: Get Controller Status with slot value:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                            innerResponse = new PlainTextOutputSpeech();
+                            responseText = GetStatus(SLOT_DEVICE_NAME, SLOT_ROOM_NAME).Result;
+                            (innerResponse as PlainTextOutputSpeech).Text = responseText;
+                            response.Response.ShouldEndSession = true;
+                            break;
+                        default:
+                            log.LogLine($"Unknown intent: " + intentRequest.Intent.Name);
+                            innerResponse = new PlainTextOutputSpeech();
+                            (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
+                            response.Response.ShouldEndSession = true;
+                            break;
+                    }
+                }
+                catch (Exception exp)
+                {
+                    innerResponse = new PlainTextOutputSpeech();
+                    (innerResponse as PlainTextOutputSpeech).Text = "Sorry, I could not clearly understand the last command. Could you please repeat that...";
+                    response.Response.ShouldEndSession = true;
                 }
             }
 
