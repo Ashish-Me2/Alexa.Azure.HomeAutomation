@@ -28,7 +28,10 @@ namespace Alexa.Skill.HomeAutomation
             enINResource.HelpMessage = "You can say ask Controller to turn on the bulb in the Living Room, or, you can say exit... What can I help you with?";
             enINResource.HelpReprompt = String.Empty;
             enINResource.StopMessage = String.Empty;
-            enINResource.Facts.Add("Please speak your desired operation clearly...");
+            enINResource.Facts.Add("Please speak your desired operation clearly.");
+            enINResource.Facts.Add("Kuchh samajh nahi aayaa. Dobaaraa bolo.");
+            enINResource.Facts.Add("Sorry, I could not clearly understand the last command. Could you please repeat that?");
+            enINResource.Facts.Add("Clearly bolo naa kya karnaa hai!");
             resources.Add(enINResource);
             return resources;
         }
@@ -56,25 +59,26 @@ namespace Alexa.Skill.HomeAutomation
             {
                 log.LogLine($"Default LaunchRequest made: 'Alexa, ask Controller");
                 innerResponse = new PlainTextOutputSpeech();
-                (innerResponse as PlainTextOutputSpeech).Text = emitNewFact(resource, true);
-
+                (innerResponse as PlainTextOutputSpeech).Text = emitNewFact(resource, false);
+                response.Response.ShouldEndSession = true;
             }
             else if (input.GetRequestType() == typeof(IntentRequest))
             {
                 var intentRequest = (IntentRequest)input.Request;
-                string SLOT_ROOM_NAME = intentRequest.Intent.Slots["ROOM_NAME"].Value;
-                string SLOT_DEVICE_NAME = intentRequest.Intent.Slots["DEVICE_NAME"].Value;
-                string SLOT_DEVICE_STATE = intentRequest.Intent.Slots["DEVICE_STATE"].Value;
-
-                log.LogLine($"-------------------------------------------------------------");
-                log.LogLine($"INTENT RESOLVER received Intent - " + intentRequest.Intent.Name);
-                log.LogLine($"SLOT RESOLVER received Slots - " + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
-                log.LogLine($"-------------------------------------------------------------");
-
                 try
                 {
-                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "Tubelight" : SLOT_DEVICE_NAME;
-                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LAMP", StringComparison.CurrentCultureIgnoreCase)) ? "Bulb" : SLOT_DEVICE_NAME;
+                    string SLOT_ROOM_NAME = intentRequest.Intent.Slots["ROOM_NAME"].Value;
+                    string SLOT_DEVICE_NAME = intentRequest.Intent.Slots["DEVICE_NAME"].Value;
+                    string SLOT_DEVICE_STATE = intentRequest.Intent.Slots["DEVICE_STATE"].Value;
+
+                    log.LogLine($"-------------------------------------------------------------");
+                    log.LogLine($"INTENT RESOLVER received Intent - " + intentRequest.Intent.Name);
+                    log.LogLine($"SLOT RESOLVER received Slots - " + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
+                    log.LogLine($"-------------------------------------------------------------");
+
+                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LIGHT", StringComparison.CurrentCultureIgnoreCase)) ? "TUBELIGHT" : SLOT_DEVICE_NAME;
+                    SLOT_DEVICE_NAME = (SLOT_DEVICE_NAME.Equals("LAMP", StringComparison.CurrentCultureIgnoreCase)) ? "BULB" : SLOT_DEVICE_NAME;
+
                     string responseText = String.Empty;
                     switch (intentRequest.Intent.Name)
                     {
@@ -91,6 +95,7 @@ namespace Alexa.Skill.HomeAutomation
                             response.Response.ShouldEndSession = true;
                             break;
                         case "AMAZON.HelpIntent":
+                        case "AMAZON.FallbackIntent":
                             log.LogLine($"AMAZON.HelpIntent: send HelpMessage");
                             innerResponse = new PlainTextOutputSpeech();
                             (innerResponse as PlainTextOutputSpeech).Text = resource.HelpMessage;
@@ -98,7 +103,14 @@ namespace Alexa.Skill.HomeAutomation
                         case "OperateDevice":
                             log.LogLine($"OperateDevice sent: Operate Controller with slot values:" + SLOT_DEVICE_NAME + ", " + SLOT_ROOM_NAME + ", " + SLOT_DEVICE_STATE);
                             innerResponse = new PlainTextOutputSpeech();
-                            responseText = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
+                            bool isDeviceCorrect = IsSlotValid(SLOT_DEVICE_NAME, "DEVICE");
+                            bool isDeviceStateCorrect = IsSlotValid(SLOT_DEVICE_STATE, "STATE");
+                            if (!isDeviceCorrect) responseText = "The device name in your command is not correct. Please repeat the command.";
+                            if (!isDeviceStateCorrect) responseText = "The desired device operation in your command is not correct. Please repeat the command.";
+                            if (isDeviceCorrect && isDeviceStateCorrect)
+                            {
+                                responseText = OperateDevice(SLOT_DEVICE_NAME, SLOT_ROOM_NAME, SLOT_DEVICE_STATE).Result;
+                            }
                             (innerResponse as PlainTextOutputSpeech).Text = responseText;
                             response.Response.ShouldEndSession = true;
                             break;
@@ -120,7 +132,7 @@ namespace Alexa.Skill.HomeAutomation
                 catch (Exception exp)
                 {
                     innerResponse = new PlainTextOutputSpeech();
-                    (innerResponse as PlainTextOutputSpeech).Text = "Sorry, I could not clearly understand the last command. Could you please repeat that...";
+                    (innerResponse as PlainTextOutputSpeech).Text = emitNewFact(resource, false);
                     response.Response.ShouldEndSession = true;
                 }
             }
@@ -208,6 +220,20 @@ namespace Alexa.Skill.HomeAutomation
             return retVal;
         }
 
+        private bool IsSlotValid(string SlotValue, string SlotType)
+        {
+            bool retVal = false;
+            switch (SlotType.ToUpper())
+            {
+                case "DEVICE":
+                    if ((SlotValue.ToUpper() == "BULB") || (SlotValue.ToUpper() == "LAMP") || (SlotValue.ToUpper() == "FAN") || (SlotValue.ToUpper() == "TUBELIGHT")) retVal = true;
+                    break;
+                case "STATE":
+                    if ((SlotValue.ToUpper() == "ON") || (SlotValue.ToUpper() == "OFF")) retVal = true;
+                    break;
+            }
+            return retVal;
+        }
 
         public string emitNewFact(FactResource resource, bool withPreface)
         {
