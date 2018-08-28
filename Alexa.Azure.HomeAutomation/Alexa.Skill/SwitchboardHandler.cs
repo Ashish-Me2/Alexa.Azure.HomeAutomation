@@ -147,7 +147,7 @@ namespace Alexa.Skill.HomeAutomation
         private async Task<int> IsRoomControllerAlive(string RoomName)
         {
             ExtServiceHelper service = new ExtServiceHelper();
-            string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+            string baseUri = "https://homeautomationapi.azurewebsites.net/api/home/";
             string method = "GetIsControllerAlive?RoomName=" + ReplaceAllSpaces(RoomName);
             string retVal = String.Empty;
             int result = -1;
@@ -176,7 +176,7 @@ namespace Alexa.Skill.HomeAutomation
             }
             else {
                 ExtServiceHelper service = new ExtServiceHelper();
-                string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+                string baseUri = "https://homeautomationapi.azurewebsites.net/api/home/";
                 string method = "GetRoomDeviceStatus?RoomName=" + ReplaceAllSpaces(RoomName);
 
                 try
@@ -203,7 +203,7 @@ namespace Alexa.Skill.HomeAutomation
             else
             {
                 ExtServiceHelper service = new ExtServiceHelper();
-                string baseUri = "http://homeautomationapi.azurewebsites.net/api/home/";
+                string baseUri = "https://homeautomationapi.azurewebsites.net/api/home/";
                 string method = "GetUpdatedDeviceState?DeviceName=" + DeviceName + "&RoomName=" + ReplaceAllSpaces(RoomName) + "&NewState=" + (NewState.Equals("ON", StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
                 try
                 {
